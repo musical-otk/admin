@@ -343,7 +343,8 @@
 
 <script>
 const ORG = 'musical-otk';
-const KNOWN_REPOS = ['eoduk2026','letter2026','otk-schedule','outcasts2026','roger','roger2026','sinimuni2026','stone2026','stone2026_v2'];
+const KNOWN_REPOS = ['outcasts2026','sinimuni2026'];
+let expectedCastFields = []; // repo 선택 시 감지한 배역 필드명
 
 let pat = '';
 let claudeKey = '';
@@ -394,6 +395,7 @@ async function onRepoChange() {
   const repo = document.getElementById('repo-select').value;
   if (!repo) return;
   currentSHAs = { schedule: null, events: null };
+  expectedCastFields = [];
   ['schedule', 'events'].forEach(t => {
     setBadge(t, 'info', '대기');
     setMsg(t, '');
@@ -403,11 +405,24 @@ async function onRepoChange() {
     document.getElementById(`${t}-zone`).classList.remove('has-file','has-error');
   });
   updateCommitBtn();
+
   for (const fname of ['schedule','events']) {
     try {
       const data = await ghGet(`/repos/${ORG}/${repo}/contents/${fname}.json`);
       currentSHAs[fname] = data.sha;
+
+      // schedule.json에서 배역 필드명 감지
+      if (fname === 'schedule' && data.content) {
+        const decoded = JSON.parse(atob(data.content.replace(/\n/g,'')));
+        if (Array.isArray(decoded) && decoded.length) {
+          expectedCastFields = Object.keys(decoded[0]).filter(k => k !== 'date' && k !== 'time');
+        }
+      }
     } catch {}
+  }
+
+  if (expectedCastFields.length) {
+    setMsg('schedule', 'info', `기존 필드명 감지: date, time, ${expectedCastFields.join(', ')}`);
   }
 }
 
@@ -519,6 +534,12 @@ async function extractWithClaude(type) {
     const [header, b64data] = pendingImgs[type].split(',');
     const mimeType = header.match(/:(.*?);/)[1];
 
+    // 배역 필드명이 감지된 경우 프롬프트에 주입
+    let prompt = PROMPTS[type];
+    if (type === 'schedule' && expectedCastFields.length) {
+      prompt += `\n\n반드시 다음 필드명을 사용하세요: ${expectedCastFields.join(', ')}\n예시: {"date":"2026-07-01","time":"20:00","${expectedCastFields[0]}":"배우명"${expectedCastFields[1] ? `,"${expectedCastFields[1]}":"배우명"` : ''}}`;
+    }
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -534,7 +555,7 @@ async function extractWithClaude(type) {
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: mimeType, data: b64data } },
-            { type: 'text', text: PROMPTS[type] }
+            { type: 'text', text: prompt }
           ]
         }]
       })
@@ -577,6 +598,14 @@ function validateJSON(data, type) {
       if (!DATE_RE.test(row.date)) errs.push(`[${i}] date 오류: "${row.date}"`);
       if (!TIME_RE.test(row.time)) errs.push(`[${i}] time 오류: "${row.time}"`);
     });
+    // 배역 필드명 검사
+    if (expectedCastFields.length) {
+      const actualFields = Object.keys(data[0]).filter(k => k !== 'date' && k !== 'time');
+      const missing = expectedCastFields.filter(f => !actualFields.includes(f));
+      const extra   = actualFields.filter(f => !expectedCastFields.includes(f));
+      if (missing.length) errs.push(`필드 누락: ${missing.join(', ')} (기존: ${expectedCastFields.join(', ')})`);
+      if (extra.length)   errs.push(`알 수 없는 필드: ${extra.join(', ')} (기존: ${expectedCastFields.join(', ')})`);
+    }
   } else {
     data.forEach((row, i) => {
       if (!row.name) errs.push(`[${i}] name 누락`);
