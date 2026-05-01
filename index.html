@@ -59,8 +59,9 @@
   }
   select option { background: #1a1a24; }
 
-  .pat-row { display: flex; gap: 8px; }
-  .pat-row input { flex: 1; }
+  .key-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .key-row input { flex: 1; }
+  .key-toggle { font-size: 18px; background: none; border: 1px solid #2a2a3a; border-radius: 8px; padding: 0 12px; cursor: pointer; color: #9090b0; }
 
   .btn {
     border: none;
@@ -73,11 +74,28 @@
     white-space: nowrap;
   }
   .btn:active { transform: scale(0.97); }
-  .btn-primary { background: #5b6ef5; color: #fff; }
-  .btn-success { background: #22c55e; color: #fff; width: 100%; padding: 14px; font-size: 16px; }
-  .btn-danger  { background: #ef4444; color: #fff; }
-  .btn-sm      { padding: 8px 14px; font-size: 13px; }
+  .btn-primary  { background: #5b6ef5; color: #fff; }
+  .btn-success  { background: #22c55e; color: #fff; width: 100%; padding: 14px; font-size: 16px; }
+  .btn-claude   { background: #c96442; color: #fff; width: 100%; padding: 11px; font-size: 14px; font-weight: 600; }
+  .btn-sm       { padding: 8px 14px; font-size: 13px; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tab {
+    flex: 1;
+    padding: 9px;
+    border: 1px solid #2a2a3a;
+    border-radius: 8px;
+    background: #0f0f18;
+    color: #9090b0;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .tab.active { background: #1e1b4b; border-color: #5b6ef5; color: #a5b4fc; }
 
   /* Upload zone */
   .upload-zone {
@@ -102,6 +120,17 @@
   .upload-label strong { color: #e8e8f0; }
   .upload-hint { font-size: 12px; color: #606080; margin-top: 4px; }
 
+  /* Image preview */
+  .img-preview {
+    width: 100%;
+    border-radius: 8px;
+    margin-top: 8px;
+    max-height: 200px;
+    object-fit: contain;
+    background: #0a0a12;
+    display: none;
+  }
+
   /* File sections */
   .file-section { margin-bottom: 20px; }
   .file-section-header {
@@ -117,9 +146,10 @@
     border-radius: 20px;
     font-weight: 600;
   }
-  .badge-ok    { background: #14532d; color: #4ade80; }
-  .badge-error { background: #450a0a; color: #f87171; }
-  .badge-info  { background: #1e1b4b; color: #a5b4fc; }
+  .badge-ok      { background: #14532d; color: #4ade80; }
+  .badge-error   { background: #450a0a; color: #f87171; }
+  .badge-info    { background: #1e1b4b; color: #a5b4fc; }
+  .badge-loading { background: #292524; color: #fbbf24; }
 
   /* Preview table */
   .preview-wrap {
@@ -174,55 +204,83 @@
   #log .inf { color: #93c5fd; }
   #log .wrn { color: #fbbf24; }
 
-  .sep { height: 1px; background: #2a2a3a; margin: 16px 0; }
-  .row { display: flex; gap: 10px; align-items: flex-start; }
-  .row > * { flex: 1; }
-
-  /* PAT visibility toggle */
-  #pat-toggle { font-size: 18px; background: none; border: 1px solid #2a2a3a; border-radius: 8px; padding: 0 12px; cursor: pointer; color: #9090b0; }
+  .panel { display: none; }
+  .panel.active { display: block; }
 </style>
 </head>
 <body>
 
 <h1><span>🎭</span> OTK Admin</h1>
 
-<!-- PAT 설정 -->
-<div class="card" id="pat-card">
+<!-- GitHub PAT -->
+<div class="card">
   <div class="card-title">GitHub 인증</div>
-  <label for="pat-input">Personal Access Token</label>
-  <div class="pat-row">
-    <input type="password" id="pat-input" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
-    <button id="pat-toggle" onclick="togglePAT()">👁</button>
+  <div class="key-row">
+    <input type="password" id="pat-input" placeholder="ghp_ 또는 github_pat_…" autocomplete="off">
+    <button class="key-toggle" onclick="toggleVis('pat-input')">👁</button>
     <button class="btn btn-primary btn-sm" onclick="savePAT()">저장</button>
   </div>
   <div id="pat-msg"></div>
 </div>
 
+<!-- Claude API Key -->
+<div class="card">
+  <div class="card-title">Claude AI (이미지 추출용 · 선택사항)</div>
+  <div class="key-row">
+    <input type="password" id="claude-input" placeholder="sk-ant-…" autocomplete="off">
+    <button class="key-toggle" onclick="toggleVis('claude-input')">👁</button>
+    <button class="btn btn-primary btn-sm" onclick="saveClaudeKey()">저장</button>
+  </div>
+  <div id="claude-msg"></div>
+</div>
+
 <!-- Repo 선택 -->
 <div class="card">
   <div class="card-title">대상 저장소</div>
-  <label for="repo-select">Repo 선택</label>
   <select id="repo-select" onchange="onRepoChange()">
-    <option value="">— 로드 중 —</option>
+    <option value="">— 선택하세요 —</option>
   </select>
 </div>
 
 <!-- schedule.json -->
-<div class="card" id="schedule-card">
+<div class="card">
   <div class="file-section">
     <div class="file-section-header">
       <h3>📅 schedule.json</h3>
       <span id="schedule-badge" class="badge badge-info">대기</span>
     </div>
 
-    <div class="upload-zone" id="schedule-zone"
-         ondragover="handleDrag(event,'schedule')"
-         ondragleave="handleDragLeave(event,'schedule')"
-         ondrop="handleDrop(event,'schedule')">
-      <input type="file" accept=".json,application/json" onchange="handleFileInput(event,'schedule')">
-      <div class="upload-icon">📂</div>
-      <div class="upload-label"><strong>파일 선택</strong> 또는 드래그</div>
-      <div class="upload-hint">*.json 파일 · 어떤 파일명이든 schedule.json으로 저장됩니다</div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('schedule','json',this)">📂 JSON 파일</div>
+      <div class="tab" onclick="switchTab('schedule','image',this)">🤖 이미지로 추출</div>
+    </div>
+
+    <div id="schedule-panel-json" class="panel active">
+      <div class="upload-zone" id="schedule-zone"
+           ondragover="handleDrag(event,'schedule')"
+           ondragleave="handleDragLeave(event,'schedule')"
+           ondrop="handleDrop(event,'schedule','json')">
+        <input type="file" accept=".json,application/json" onchange="handleFileInput(event,'schedule','json')">
+        <div class="upload-icon">📂</div>
+        <div class="upload-label"><strong>파일 선택</strong> 또는 드래그</div>
+        <div class="upload-hint">*.json · 파일명 무관하게 schedule.json으로 저장됩니다</div>
+      </div>
+    </div>
+
+    <div id="schedule-panel-image" class="panel">
+      <div class="upload-zone" id="schedule-img-zone"
+           ondragover="handleDrag(event,'schedule-img')"
+           ondragleave="handleDragLeave(event,'schedule-img')"
+           ondrop="handleDrop(event,'schedule','image')">
+        <input type="file" accept="image/*" onchange="handleFileInput(event,'schedule','image')">
+        <div class="upload-icon">🖼</div>
+        <div class="upload-label"><strong>이미지 선택</strong> 또는 드래그</div>
+        <div class="upload-hint">캐스팅 일정표 이미지 · JPG, PNG 등</div>
+      </div>
+      <img id="schedule-img-preview" class="img-preview">
+      <button class="btn btn-claude" id="schedule-claude-btn" onclick="extractWithClaude('schedule')" disabled>
+        🤖 Claude로 일정 추출하기
+      </button>
     </div>
 
     <div id="schedule-msg"></div>
@@ -231,21 +289,44 @@
 </div>
 
 <!-- events.json -->
-<div class="card" id="events-card">
+<div class="card">
   <div class="file-section">
     <div class="file-section-header">
       <h3>🗓 events.json</h3>
       <span id="events-badge" class="badge badge-info">대기</span>
     </div>
 
-    <div class="upload-zone" id="events-zone"
-         ondragover="handleDrag(event,'events')"
-         ondragleave="handleDragLeave(event,'events')"
-         ondrop="handleDrop(event,'events')">
-      <input type="file" accept=".json,application/json" onchange="handleFileInput(event,'events')">
-      <div class="upload-icon">📂</div>
-      <div class="upload-label"><strong>파일 선택</strong> 또는 드래그</div>
-      <div class="upload-hint">*.json 파일 · 어떤 파일명이든 events.json으로 저장됩니다</div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('events','json',this)">📂 JSON 파일</div>
+      <div class="tab" onclick="switchTab('events','image',this)">🤖 이미지로 추출</div>
+    </div>
+
+    <div id="events-panel-json" class="panel active">
+      <div class="upload-zone" id="events-zone"
+           ondragover="handleDrag(event,'events')"
+           ondragleave="handleDragLeave(event,'events')"
+           ondrop="handleDrop(event,'events','json')">
+        <input type="file" accept=".json,application/json" onchange="handleFileInput(event,'events','json')">
+        <div class="upload-icon">📂</div>
+        <div class="upload-label"><strong>파일 선택</strong> 또는 드래그</div>
+        <div class="upload-hint">*.json · 파일명 무관하게 events.json으로 저장됩니다</div>
+      </div>
+    </div>
+
+    <div id="events-panel-image" class="panel">
+      <div class="upload-zone" id="events-img-zone"
+           ondragover="handleDrag(event,'events-img')"
+           ondragleave="handleDragLeave(event,'events-img')"
+           ondrop="handleDrop(event,'events','image')">
+        <input type="file" accept="image/*" onchange="handleFileInput(event,'events','image')">
+        <div class="upload-icon">🖼</div>
+        <div class="upload-label"><strong>이미지 선택</strong> 또는 드래그</div>
+        <div class="upload-hint">이벤트 일정 이미지 · JPG, PNG 등</div>
+      </div>
+      <img id="events-img-preview" class="img-preview">
+      <button class="btn btn-claude" id="events-claude-btn" onclick="extractWithClaude('events')" disabled>
+        🤖 Claude로 이벤트 추출하기
+      </button>
     </div>
 
     <div id="events-msg"></div>
@@ -262,11 +343,20 @@
 
 <script>
 const ORG = 'musical-otk';
-let pat = '';
-let pendingFiles = { schedule: null, events: null };
-let currentSHAs = { schedule: null, events: null };
+const KNOWN_REPOS = ['eoduk2026','letter2026','otk-schedule','outcasts2026','roger','roger2026','sinimuni2026','stone2026','stone2026_v2'];
 
-// ─── PAT ─────────────────────────────────────────────────────────────────────
+let pat = '';
+let claudeKey = '';
+let pendingFiles = { schedule: null, events: null };
+let currentSHAs  = { schedule: null, events: null };
+let pendingImgs  = { schedule: null, events: null }; // base64 for Claude
+
+// ─── Keys ────────────────────────────────────────────────────────────────────
+function toggleVis(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
 function savePAT() {
   const v = document.getElementById('pat-input').value.trim();
   if (!v) return showMsg('pat-msg', 'error', 'PAT를 입력하세요.');
@@ -276,30 +366,27 @@ function savePAT() {
   loadRepos();
 }
 
-function togglePAT() {
-  const el = document.getElementById('pat-input');
-  el.type = el.type === 'password' ? 'text' : 'password';
+function saveClaudeKey() {
+  const v = document.getElementById('claude-input').value.trim();
+  if (!v) return showMsg('claude-msg', 'error', 'API 키를 입력하세요.');
+  claudeKey = v;
+  localStorage.setItem('otk_claude', v);
+  showMsg('claude-msg', 'success', 'Claude API 키 저장됨.');
 }
 
 // ─── Repos ────────────────────────────────────────────────────────────────────
-const KNOWN_REPOS = ['eoduk2026','letter2026','otk-schedule','outcasts2026','roger','roger2026','stone2026','stone2026_v2'];
-
 async function loadRepos() {
   const sel = document.getElementById('repo-select');
   sel.innerHTML = '<option value="">— 불러오는 중 —</option>';
   try {
     const repos = await ghGet(`/orgs/${ORG}/repos?per_page=100&sort=updated`);
-    const names = repos
-      .map(r => r.name)
-      .filter(n => !n.startsWith('_'))
-      .sort();
+    const names = repos.map(r => r.name).filter(n => !n.startsWith('_')).sort();
     sel.innerHTML = '<option value="">— 선택하세요 —</option>' +
       names.map(n => `<option value="${n}">${n}</option>`).join('');
-  } catch(e) {
-    // org API 접근 실패 시 알려진 목록으로 대체
+  } catch {
     sel.innerHTML = '<option value="">— 선택하세요 —</option>' +
       KNOWN_REPOS.map(n => `<option value="${n}">${n}</option>`).join('');
-    showMsg('pat-msg', 'info', 'repo 목록을 로컬에서 불러왔습니다. (PAT 권한 제한)');
+    showMsg('pat-msg', 'info', 'repo 목록을 로컬에서 불러왔습니다.');
   }
 }
 
@@ -312,64 +399,68 @@ async function onRepoChange() {
     setMsg(t, '');
     setPreview(t, '');
     pendingFiles[t] = null;
-    getZone(t).classList.remove('has-file', 'has-error');
+    pendingImgs[t] = null;
+    document.getElementById(`${t}-zone`).classList.remove('has-file','has-error');
   });
   updateCommitBtn();
-
-  // 기존 파일 SHA 가져오기 (덮어쓰기 시 필요)
-  for (const fname of ['schedule', 'events']) {
+  for (const fname of ['schedule','events']) {
     try {
       const data = await ghGet(`/repos/${ORG}/${repo}/contents/${fname}.json`);
       currentSHAs[fname] = data.sha;
-    } catch(e) {
-      // 파일 없어도 OK
-    }
+    } catch {}
   }
 }
 
-// ─── File handling ────────────────────────────────────────────────────────────
-function handleDrag(e, type) {
-  e.preventDefault();
-  getZone(type).classList.add('drag-over');
-}
-function handleDragLeave(e, type) {
-  getZone(type).classList.remove('drag-over');
-}
-function handleDrop(e, type) {
-  e.preventDefault();
-  getZone(type).classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) processFile(file, type);
-}
-function handleFileInput(e, type) {
-  const file = e.target.files[0];
-  if (file) processFile(file, type);
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(type, mode, el) {
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['json','image'].forEach(m => {
+    document.getElementById(`${type}-panel-${m}`).classList.toggle('active', m === mode);
+  });
 }
 
-function processFile(file, type) {
+// ─── File / Image handling ────────────────────────────────────────────────────
+function handleDrag(e, id) { e.preventDefault(); document.getElementById(`${id}-zone`).classList.add('drag-over'); }
+function handleDragLeave(e, id) { document.getElementById(`${id}-zone`).classList.remove('drag-over'); }
+
+function handleDrop(e, type, mode) {
+  e.preventDefault();
+  const zoneId = mode === 'image' ? `${type}-img` : type;
+  document.getElementById(`${zoneId}-zone`).classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) mode === 'image' ? loadImage(file, type) : processJsonFile(file, type);
+}
+
+function handleFileInput(e, type, mode) {
+  const file = e.target.files[0];
+  if (!file) return;
+  mode === 'image' ? loadImage(file, type) : processJsonFile(file, type);
+}
+
+function loadImage(file, type) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const b64 = ev.target.result; // data:image/...;base64,...
+    pendingImgs[type] = b64;
+    const img = document.getElementById(`${type}-img-preview`);
+    img.src = b64;
+    img.style.display = 'block';
+    document.getElementById(`${type}-claude-btn`).disabled = !claudeKey;
+    if (!claudeKey) setMsg(type, 'info', '이미지 로드됨. Claude API 키를 먼저 저장하세요.');
+    else setMsg(type, 'info', '이미지 로드됨. 아래 버튼을 눌러 추출하세요.');
+  };
+  reader.readAsDataURL(file);
+}
+
+function processJsonFile(file, type) {
   const reader = new FileReader();
   reader.onload = ev => {
     try {
       const data = JSON.parse(ev.target.result);
-      const errors = validateJSON(data, type);
-      if (errors.length) {
-        getZone(type).classList.remove('has-file');
-        getZone(type).classList.add('has-error');
-        setBadge(type, 'error', '오류');
-        setMsg(type, 'error', '형식 오류:\n' + errors.join('\n'));
-        setPreview(type, '');
-        pendingFiles[type] = null;
-      } else {
-        getZone(type).classList.add('has-file');
-        getZone(type).classList.remove('has-error');
-        setBadge(type, 'ok', `✓ ${data.length}개 항목`);
-        setMsg(type, 'success', `유효한 ${type}.json · 원본 파일명: "${file.name}" → ${type}.json 으로 저장됩니다`);
-        renderPreview(type, data);
-        pendingFiles[type] = JSON.stringify(data, null, 2);
-      }
-      updateCommitBtn();
+      applyParsedData(type, data, `"${file.name}" → ${type}.json으로 저장됩니다`);
     } catch(e) {
-      getZone(type).classList.add('has-error');
+      document.getElementById(`${type}-zone`).classList.add('has-error');
       setBadge(type, 'error', '파싱 오류');
       setMsg(type, 'error', `JSON 파싱 실패: ${e.message}`);
       pendingFiles[type] = null;
@@ -377,6 +468,99 @@ function processFile(file, type) {
     }
   };
   reader.readAsText(file);
+}
+
+function applyParsedData(type, data, successNote) {
+  const errors = validateJSON(data, type);
+  if (errors.length) {
+    document.getElementById(`${type}-zone`).classList.add('has-error');
+    setBadge(type, 'error', '오류');
+    setMsg(type, 'error', '형식 오류:\n' + errors.join('\n'));
+    setPreview(type, '');
+    pendingFiles[type] = null;
+  } else {
+    document.getElementById(`${type}-zone`).classList.add('has-file');
+    setBadge(type, 'ok', `✓ ${data.length}개 항목`);
+    setMsg(type, 'success', successNote);
+    renderPreview(type, data);
+    pendingFiles[type] = JSON.stringify(data, null, 2);
+  }
+  updateCommitBtn();
+}
+
+// ─── Claude extraction ────────────────────────────────────────────────────────
+const PROMPTS = {
+  schedule: `이 이미지는 뮤지컬 공연 캐스팅 일정표입니다.
+이미지에서 공연 일정을 추출하여 아래 JSON 형식으로만 응답하세요. 설명 없이 JSON 배열만 출력하세요.
+[{"date":"YYYY-MM-DD","time":"HH:MM","역할명":"배우명",...}]
+- date는 반드시 YYYY-MM-DD 형식
+- time은 HH:MM 24시간 형식
+- 역할명은 이미지에 표기된 그대로 사용`,
+
+  events: `이 이미지는 뮤지컬 이벤트/혜택 일정입니다.
+이미지에서 이벤트 정보를 추출하여 아래 JSON 형식으로만 응답하세요. 설명 없이 JSON 배열만 출력하세요.
+[{"name":"이벤트명","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","color":"#hex"}]
+- 날짜는 YYYY-MM-DD 형식
+- color는 이벤트 성격에 맞는 hex 색상 (#4CAF50, #00BFFF, #E91E8C, #7B3FC4, #F5A623 등 중 선택)`
+};
+
+async function extractWithClaude(type) {
+  if (!claudeKey) return setMsg(type, 'error', 'Claude API 키를 먼저 저장하세요.');
+  if (!pendingImgs[type]) return setMsg(type, 'error', '이미지를 먼저 업로드하세요.');
+
+  const btn = document.getElementById(`${type}-claude-btn`);
+  btn.disabled = true;
+  btn.textContent = '🤖 분석 중…';
+  setBadge(type, 'loading', '분석 중');
+  setMsg(type, 'info', 'Claude가 이미지를 분석하고 있습니다…');
+  setPreview(type, '');
+
+  try {
+    const [header, b64data] = pendingImgs[type].split(',');
+    const mimeType = header.match(/:(.*?);/)[1];
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': claudeKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mimeType, data: b64data } },
+            { type: 'text', text: PROMPTS[type] }
+          ]
+        }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `${res.status}`);
+    }
+
+    const result = await res.json();
+    const text = result.content[0].text.trim();
+
+    // JSON 배열 추출 (마크다운 코드블록 대응)
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('JSON 배열을 찾을 수 없습니다. Claude 응답:\n' + text.slice(0, 200));
+
+    const data = JSON.parse(match[0]);
+    applyParsedData(type, data, `Claude 추출 완료 · ${data.length}개 항목 · ${type}.json으로 저장됩니다`);
+  } catch(e) {
+    setBadge(type, 'error', '오류');
+    setMsg(type, 'error', `추출 실패: ${e.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = `🤖 Claude로 ${type === 'schedule' ? '일정' : '이벤트'} 추출하기`;
+  }
 }
 
 // ─── Validation ───────────────────────────────────────────────────────────────
@@ -387,28 +571,21 @@ const HEX_RE  = /^#[0-9a-fA-F]{3,6}$/;
 function validateJSON(data, type) {
   const errs = [];
   if (!Array.isArray(data)) { errs.push('최상위가 배열이어야 합니다 ([ ... ])'); return errs; }
-  if (data.length === 0) { errs.push('항목이 0개입니다.'); return errs; }
-
+  if (!data.length) { errs.push('항목이 0개입니다.'); return errs; }
   if (type === 'schedule') {
     data.forEach((row, i) => {
-      if (!row.date || !DATE_RE.test(row.date))
-        errs.push(`[${i}] date 형식 오류 (YYYY-MM-DD 필요): "${row.date}"`);
-      if (!row.time || !TIME_RE.test(row.time))
-        errs.push(`[${i}] time 형식 오류 (HH:MM 필요): "${row.time}"`);
+      if (!DATE_RE.test(row.date)) errs.push(`[${i}] date 오류: "${row.date}"`);
+      if (!TIME_RE.test(row.time)) errs.push(`[${i}] time 오류: "${row.time}"`);
     });
   } else {
     data.forEach((row, i) => {
-      if (!row.name)
-        errs.push(`[${i}] name 누락`);
-      if (!row.startDate || !DATE_RE.test(row.startDate))
-        errs.push(`[${i}] startDate 형식 오류 (YYYY-MM-DD): "${row.startDate}"`);
-      if (!row.endDate || !DATE_RE.test(row.endDate))
-        errs.push(`[${i}] endDate 형식 오류 (YYYY-MM-DD): "${row.endDate}"`);
-      if (!row.color || !HEX_RE.test(row.color))
-        errs.push(`[${i}] color 형식 오류 (#hex): "${row.color}"`);
+      if (!row.name) errs.push(`[${i}] name 누락`);
+      if (!DATE_RE.test(row.startDate)) errs.push(`[${i}] startDate 오류: "${row.startDate}"`);
+      if (!DATE_RE.test(row.endDate))   errs.push(`[${i}] endDate 오류: "${row.endDate}"`);
+      if (!HEX_RE.test(row.color))      errs.push(`[${i}] color 오류: "${row.color}"`);
     });
   }
-  return errs.slice(0, 8); // 최대 8개만
+  return errs.slice(0, 8);
 }
 
 // ─── Preview ──────────────────────────────────────────────────────────────────
@@ -416,11 +593,13 @@ function renderPreview(type, data) {
   if (!data.length) return;
   const keys = Object.keys(data[0]);
   const rows = data.slice(0, 30).map(row =>
-    `<tr>${keys.map(k => `<td>${esc(row[k] ?? '')}</td>`).join('')}</tr>`
+    `<tr>${keys.map(k => `<td>${esc(row[k]??'')}</td>`).join('')}</tr>`
   ).join('');
-  const more = data.length > 30 ? `<tr><td colspan="${keys.length}" style="color:#606080;text-align:center">… 외 ${data.length-30}개</td></tr>` : '';
+  const more = data.length > 30
+    ? `<tr><td colspan="${keys.length}" style="color:#606080;text-align:center">… 외 ${data.length-30}개</td></tr>`
+    : '';
   setPreview(type, `<div class="preview-wrap"><table>
-    <thead><tr>${keys.map(k => `<th>${esc(k)}</th>`).join('')}</tr></thead>
+    <thead><tr>${keys.map(k=>`<th>${esc(k)}</th>`).join('')}</tr></thead>
     <tbody>${rows}${more}</tbody>
   </table></div>`);
 }
@@ -429,25 +608,21 @@ function renderPreview(type, data) {
 async function commitAll() {
   const repo = document.getElementById('repo-select').value;
   if (!repo) return;
-
   const btn = document.getElementById('commit-btn');
   btn.disabled = true;
   btn.textContent = '업로드 중…';
   showLog();
 
-  const toUpload = Object.entries(pendingFiles).filter(([,v]) => v !== null);
   let allOk = true;
-
-  for (const [type, content] of toUpload) {
-    log(`inf`, `${type}.json 업로드 중…`);
+  for (const [type, content] of Object.entries(pendingFiles).filter(([,v]) => v)) {
+    log('inf', `${type}.json 업로드 중…`);
     try {
       const b64 = btoa(unescape(encodeURIComponent(content)));
-      const body = {
+      const result = await ghPut(`/repos/${ORG}/${repo}/contents/${type}.json`, {
         message: `update ${type}.json via OTK Admin`,
         content: b64,
         ...(currentSHAs[type] ? { sha: currentSHAs[type] } : {})
-      };
-      const result = await ghPut(`/repos/${ORG}/${repo}/contents/${type}.json`, body);
+      });
       currentSHAs[type] = result.content.sha;
       log('ok', `${type}.json → ${repo} 커밋 완료 ✓`);
       setBadge(type, 'ok', '✓ 반영됨');
@@ -457,95 +632,73 @@ async function commitAll() {
     }
   }
 
-  btn.textContent = allOk ? '🚀 GitHub에 반영하기' : '🚀 GitHub에 반영하기 (일부 실패)';
+  btn.textContent = '🚀 GitHub에 반영하기';
   btn.disabled = false;
   updateCommitBtn();
 }
 
-// ─── GitHub API helpers ────────────────────────────────────────────────────────
+// ─── GitHub API ───────────────────────────────────────────────────────────────
 async function ghGet(path) {
   const res = await fetch(`https://api.github.com${path}`, {
     headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github+json' }
   });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) throw new Error(`${res.status}`);
   return res.json();
 }
 
 async function ghPut(path, body) {
   const res = await fetch(`https://api.github.com${path}`, {
     method: 'PUT',
-    headers: {
-      Authorization: `token ${pat}`,
-      Accept: 'application/vnd.github+json',
-      'Content-Type': 'application/json'
-    },
+    headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`${res.status} – ${txt.slice(0, 120)}`);
-  }
+  if (!res.ok) { const t = await res.text(); throw new Error(`${res.status} – ${t.slice(0,120)}`); }
   return res.json();
 }
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
-function getZone(type) { return document.getElementById(`${type}-zone`); }
-
 function setBadge(type, cls, text) {
   const el = document.getElementById(`${type}-badge`);
   el.className = `badge badge-${cls}`;
   el.textContent = text;
 }
-
 function setMsg(type, kind, text) {
   const el = document.getElementById(`${type}-msg`);
-  if (!text) { el.innerHTML = ''; return; }
-  const cls = kind === 'error' ? 'msg-error' : kind === 'success' ? 'msg-success' : 'msg-info';
-  el.innerHTML = `<div class="msg ${cls}">${esc(text).replace(/\n/g, '<br>')}</div>`;
+  if (!text) { el.innerHTML=''; return; }
+  const cls = {error:'msg-error',success:'msg-success',info:'msg-info'}[kind]||'msg-info';
+  el.innerHTML = `<div class="msg ${cls}">${esc(text).replace(/\n/g,'<br>')}</div>`;
 }
-
-function setPreview(type, html) {
-  document.getElementById(`${type}-preview`).innerHTML = html;
-}
-
+function setPreview(type, html) { document.getElementById(`${type}-preview`).innerHTML = html; }
 function showMsg(id, kind, text) {
-  const el = document.getElementById(id);
-  const cls = kind === 'error' ? 'msg-error' : kind === 'success' ? 'msg-success' : 'msg-info';
-  el.innerHTML = `<div class="msg ${cls}" style="margin-top:8px">${esc(text)}</div>`;
+  const cls = {error:'msg-error',success:'msg-success',info:'msg-info'}[kind]||'msg-info';
+  document.getElementById(id).innerHTML = `<div class="msg ${cls}" style="margin-top:8px">${esc(text)}</div>`;
 }
-
 function updateCommitBtn() {
   const repo = document.getElementById('repo-select').value;
-  const hasFile = pendingFiles.schedule !== null || pendingFiles.events !== null;
-  document.getElementById('commit-btn').disabled = !(repo && hasFile);
+  const has = pendingFiles.schedule || pendingFiles.events;
+  document.getElementById('commit-btn').disabled = !(repo && has);
 }
-
-function showLog() {
-  const el = document.getElementById('log');
-  el.style.display = 'block';
-  el.innerHTML = '';
-}
-
+function showLog() { const el=document.getElementById('log'); el.style.display='block'; el.innerHTML=''; }
 function log(cls, msg) {
   const el = document.getElementById('log');
   el.innerHTML += `<div class="log-line ${cls}">${esc(msg)}</div>`;
   el.scrollTop = el.scrollHeight;
 }
-
 function esc(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 (function init() {
-  const stored = localStorage.getItem('otk_pat');
-  if (stored) {
-    pat = stored;
-    document.getElementById('pat-input').value = stored;
-    showMsg('pat-msg', 'info', '저장된 PAT를 불러왔습니다.');
-    loadRepos();
+  const p = localStorage.getItem('otk_pat');
+  if (p) { pat=p; document.getElementById('pat-input').value=p; showMsg('pat-msg','info','저장된 PAT 불러옴.'); loadRepos(); }
+  const c = localStorage.getItem('otk_claude');
+  if (c) { claudeKey=c; document.getElementById('claude-input').value=c; showMsg('claude-msg','info','저장된 Claude 키 불러옴.'); }
+  // repo 목록 초기 세팅 (PAT 없어도)
+  if (!p) {
+    const sel = document.getElementById('repo-select');
+    sel.innerHTML = '<option value="">— 선택하세요 —</option>' +
+      KNOWN_REPOS.map(n=>`<option value="${n}">${n}</option>`).join('');
   }
 })();
 </script>
