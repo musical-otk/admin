@@ -98,22 +98,6 @@
   .tab.active { background: #1e1b4b; border-color: #5b6ef5; color: #a5b4fc; }
 
   /* Upload zone */
-    .btn-paste { width:100%; margin-top:10px; background:#2a2c50; color:#c7cbf5; border:1px solid #3a3d68; }
-  .btn-paste:hover { background:#33365e; }
-  .opt-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; flex-wrap:wrap; }
-  .opt { display:flex; align-items:center; gap:6px; font-size:13px; color:#c7cbf5; cursor:pointer; }
-  .opt input { width:15px; height:15px; accent-color:#5b6ef5; }
-  .opt-note { font-size:12px; color:#7a7fa8; }
-  .swatch { display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:6px;
-            vertical-align:-1px; border:1px solid rgba(255,255,255,.25); }
-  .cell-empty { color:#4a4d70; }
-  .row-new td { background:#1d3324; }
-  .row-new td:first-child { box-shadow: inset 3px 0 0 #22c55e; }
-  .preview-legend { font-size:12px; color:#7a7fa8; margin:8px 0 4px; display:flex; align-items:center; gap:6px; }
-  .dot-new { display:inline-block; width:9px; height:9px; border-radius:2px; background:#22c55e; }
-  .preview-count { font-size:12px; color:#7a7fa8; text-align:right; margin-top:6px; }
-  .preview-wrap { max-height:none; }
-  .preview-wrap a { color:#8ab4ff; }
   .upload-zone {
     border: 2px dashed #2a2a3a;
     border-radius: 10px;
@@ -220,6 +204,25 @@
   #log .inf { color: #93c5fd; }
   #log .wrn { color: #fbbf24; }
 
+  /* 붙여넣기 · 병합 옵션 */
+  .btn-paste { width:100%; margin-top:10px; background:#2a2c50; color:#c7cbf5; border:1px solid #3a3d68; }
+  .btn-paste:active { background:#33365e; }
+  .opt-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .opt { display:flex; align-items:center; gap:6px; font-size:13px; color:#c7cbf5; cursor:pointer; }
+  .opt input { width:15px; height:15px; accent-color:#5b6ef5; }
+  .opt-note { font-size:12px; color:#7a7fa8; }
+
+  /* 미리보기 — 전량 표시, 색상 칩, 변경행 강조 */
+  .preview-wrap { max-height: 55vh; }
+  .preview-wrap a { color:#8ab4ff; }
+  .swatch { display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:6px;
+            vertical-align:-1px; border:1px solid rgba(255,255,255,.25); }
+  .cell-empty { color:#4a4d70; }
+  .row-new td { background:#1d3324; }
+  .row-new td:first-child { box-shadow: inset 3px 0 0 #22c55e; }
+  .preview-legend { font-size:12px; color:#7a7fa8; margin:8px 0 4px; display:flex; align-items:center; gap:6px; }
+  .dot-new { display:inline-block; width:9px; height:9px; border-radius:2px; background:#22c55e; }
+  .preview-count { font-size:12px; color:#7a7fa8; text-align:right; margin-top:6px; }
   .panel { display: none; }
   .panel.active { display: block; }
 </style>
