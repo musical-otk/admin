@@ -212,6 +212,11 @@
   .opt input { width:15px; height:15px; accent-color:#5b6ef5; }
   .opt-note { font-size:12px; color:#7a7fa8; }
 
+  .btn-ghost { background:#22243f; color:#a9aed6; border:1px solid #33365e; }
+  .btn-ghost:disabled { opacity:.35; }
+  .export-row { display:flex; gap:8px; margin-top:8px; }
+  .export-row .btn { flex:1; }
+
   /* 미리보기 — 전량 표시, 색상 칩, 변경행 강조 */
   .preview-wrap { max-height: 55vh; }
   .preview-wrap a { color:#8ab4ff; }
@@ -289,6 +294,10 @@
         <label class="opt"><input type="checkbox" id="schedule-merge" checked> 기존 일정과 병합</label>
         <span class="opt-note" id="schedule-existing">저장소를 먼저 선택하세요</span>
       </div>
+      <div class="export-row">
+        <button class="btn btn-ghost btn-sm" id="schedule-copy" onclick="copyCurrent('schedule')" disabled>📄 현재 내용 복사</button>
+        <button class="btn btn-ghost btn-sm" id="schedule-dl" onclick="downloadCurrent('schedule')" disabled>⬇ 파일로 저장</button>
+      </div>
 </div>
 
     <div id="schedule-panel-image" class="panel">
@@ -339,6 +348,10 @@
       <div class="opt-row">
         <label class="opt"><input type="checkbox" id="events-merge" checked> 기존 이벤트와 병합</label>
         <span class="opt-note" id="events-existing">저장소를 먼저 선택하세요</span>
+      </div>
+      <div class="export-row">
+        <button class="btn btn-ghost btn-sm" id="events-copy" onclick="copyCurrent('events')" disabled>📄 현재 내용 복사</button>
+        <button class="btn btn-ghost btn-sm" id="events-dl" onclick="downloadCurrent('events')" disabled>⬇ 파일로 저장</button>
       </div>
 </div>
 
@@ -609,6 +622,50 @@ function applyParsedData(type, data, successNote) {
   updateCommitBtn();
 }
 
+// ─── 현재 내용 내보내기 ────────────────────────────────────────────────────────
+// 미리보기에 떠 있는 그대로 준다. 저장소를 막 고른 뒤면 저장소의 현재 내용,
+// 새 데이터를 넣은 뒤면 병합 결과가 나간다.
+function currentData(type) {
+  return pendingFiles[type] ? JSON.parse(pendingFiles[type]) : existingData[type];
+}
+
+// 미리보기에 내용이 있을 때만 내보내기 버튼을 켠다
+function updateExportBtns() {
+  ['schedule','events'].forEach(t => {
+    const has = !!(currentData(t) || []).length;
+    ['copy','dl'].forEach(k => {
+      const b = document.getElementById(`${t}-${k}`);
+      if (b) b.disabled = !has;
+    });
+  });
+}
+
+async function copyCurrent(type) {
+  const data = currentData(type);
+  if (!data?.length) return setMsg(type, 'error', '내보낼 내용이 없습니다.');
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setMsg(type, 'success', `${data.length}개 항목을 복사했습니다. Claude 세션에 붙여넣어 쓰세요.`);
+  } catch (e) {
+    setMsg(type, 'error', `복사 실패: ${e.message}`);
+  }
+}
+
+function downloadCurrent(type) {
+  const data = currentData(type);
+  if (!data?.length) return setMsg(type, 'error', '내려받을 내용이 없습니다.');
+  const repo = document.getElementById('repo-select').value || 'otk';
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${repo}-${type}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  setMsg(type, 'success', `${repo}-${type}.json (${data.length}개) 내려받았습니다.`);
+}
+
 // ─── 클립보드 붙여넣기 ─────────────────────────────────────────────────────────
 // 폰에서는 파일을 만드는 것보다 복사→붙여넣기가 훨씬 짧다.
 async function pasteJson(type) {
@@ -869,7 +926,9 @@ function showMsg(id, kind, text) {
   const cls = {error:'msg-error',success:'msg-success',info:'msg-info'}[kind]||'msg-info';
   document.getElementById(id).innerHTML = `<div class="msg ${cls}" style="margin-top:8px">${esc(text)}</div>`;
 }
+// 커밋 버튼을 갱신하는 시점마다 내보내기 버튼도 함께 갱신한다
 function updateCommitBtn() {
+  updateExportBtns();
   const repo = document.getElementById('repo-select').value;
   const has = pendingFiles.schedule || pendingFiles.events;
   document.getElementById('commit-btn').disabled = !(repo && has);
