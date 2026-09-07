@@ -372,7 +372,10 @@
 
 <script>
 const ORG = 'musical-otk';
-const KNOWN_REPOS = ['dive2026','outcasts2026','sinimuni2026','widerstand2026'];
+// API 로 목록을 못 받았을 때만 쓰는 폴백
+const KNOWN_REPOS = ['dive2026','ikkisup2026','oi2026','outcasts2026','sinimuni2026','widerstand2026'];
+// 관극 다이어리가 아닌 저장소 — 목록에서 뺀다 (_로 시작하는 것도 자동 제외)
+const NON_DIARY_REPOS = ['admin','sample','.github','otk-schedule','roger'];
 let expectedCastFields = []; // repo 선택 시 감지한 배역 필드명
 
 let pat = '';
@@ -409,12 +412,24 @@ function saveClaudeKey() {
 async function loadRepos() {
   const sel = document.getElementById('repo-select');
   sel.innerHTML = '<option value="">— 불러오는 중 —</option>';
-  try {
-    const repos = await ghGet(`/orgs/${ORG}/repos?per_page=100&sort=updated`);
-    const names = repos.map(r => r.name).filter(n => !n.startsWith('_')).sort();
+
+  // musical-otk 은 조직이 아니라 사용자 계정이라 /orgs 는 404 가 난다.
+  // /orgs 를 먼저 시도하되 실패하면 /users 로 넘어간다.
+  let names = null;
+  for (const path of [`/orgs/${ORG}/repos`, `/users/${ORG}/repos`]) {
+    try {
+      const repos = await ghGet(`${path}?per_page=100&sort=updated`);
+      names = repos.map(r => r.name)
+        .filter(n => !n.startsWith('_') && !NON_DIARY_REPOS.includes(n))
+        .sort();
+      break;
+    } catch {}
+  }
+
+  if (names && names.length) {
     sel.innerHTML = '<option value="">— 선택하세요 —</option>' +
       names.map(n => `<option value="${n}">${n}</option>`).join('');
-  } catch {
+  } else {
     sel.innerHTML = '<option value="">— 선택하세요 —</option>' +
       KNOWN_REPOS.map(n => `<option value="${n}">${n}</option>`).join('');
     showMsg('pat-msg', 'info', 'repo 목록을 로컬에서 불러왔습니다.');
@@ -456,14 +471,26 @@ async function onRepoChange() {
     } catch {}
   }
 
+  // 저장소를 고르면 현재 저장된 내용을 그대로 보여준다.
+  // 무엇이 이미 들어있는지 봐야 중복으로 넣거나 빠뜨리지 않는다.
   ['schedule','events'].forEach(t => {
-    const n = existingData[t]?.length;
+    const rows = existingData[t];
     const el = document.getElementById(`${t}-existing`);
-    if (el) el.textContent = n ? `기존 ${n}개 항목` : '기존 파일 없음 — 전체가 새로 만들어집니다';
+    if (el) el.textContent = rows?.length ? `기존 ${rows.length}개 항목` : '기존 파일 없음 — 전체가 새로 만들어집니다';
+    if (rows?.length) {
+      setBadge(t, 'info', `현재 ${rows.length}개`);
+      renderPreview(t, rows);          // added 없음 → 강조 표시 없이 현재 상태만
+      setMsg(t, 'info', `${repo}/${t}.json 의 현재 내용입니다. 새 데이터를 넣으면 병합 결과로 바뀝니다.`);
+    } else {
+      setPreview(t, '');
+    }
   });
 
   if (expectedCastFields.length) {
-    setMsg('schedule', 'info', `기존 필드명 감지: date, time, ${expectedCastFields.join(', ')}`);
+    const n = existingData.schedule?.length;
+    setMsg('schedule', 'info',
+      (n ? `${repo}/schedule.json 현재 ${n}개 회차\n` : '') +
+      `배역 필드: date, time, ${expectedCastFields.join(', ')}`);
   }
 }
 
